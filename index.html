@@ -28,6 +28,11 @@ canvas{width:100%;height:220px}
 .hide{display:none}.tag{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--bd)}
 .pz{min-height:90px;border:2px dashed var(--bd);border-radius:10px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;outline:none;align-content:flex-start}.pz:focus,.pz.on{border-color:var(--ac)}.pz img{height:80px;border-radius:6px;cursor:zoom-in}.th{position:relative}.th b{position:absolute;top:2px;right:2px;background:var(--r);color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;cursor:pointer;font-size:12px}.ph{color:var(--mu);font-size:12px;width:100%}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20;overflow:auto;padding:14px}.ov .in{max-width:1000px;margin:0 auto;background:var(--card);border-radius:12px;padding:14px}.ov img{width:100%;border-radius:8px;margin:6px 0}
+.sec{font-weight:600;margin:18px 0 8px;padding-top:12px;border-top:1px solid var(--bd);color:var(--ac);font-size:13px;letter-spacing:.3px}.sec:first-of-type{border:0;margin-top:6px;padding-top:0}
+.fld{margin-bottom:10px}input,select{font-size:15px}.chip{padding:6px 12px;font-size:13px}.chip.add{color:var(--mu);border-style:dashed}.seg.rm .chip:not(.add){border-color:var(--r)}
+.ta{min-height:120px;font-size:15px;line-height:1.55;overflow:hidden;resize:none}.ex{color:var(--ac);cursor:pointer;float:right;font-size:12px}
+.sbar{position:sticky;bottom:0;background:var(--card);padding:10px 12px;border-top:1px solid var(--bd);margin:14px -12px -12px;display:flex;gap:8px;border-radius:0 0 12px 12px;z-index:3}
+.ck{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--tx);cursor:pointer;margin:10px 0}.ck input{width:22px;height:22px}
 </style></head><body>
 <header><b>📈 Trading Journal</b><button class="tab on" data-t="add">➕ Trade</button><button class="tab" data-t="list">📋 Trades</button><button class="tab" data-t="ana">📊 Analysis</button><button class="tab" data-t="data">⚙️ Data &amp; Backup</button></header>
 <main>
@@ -39,9 +44,9 @@ canvas{width:100%;height:220px}
 <script>
 const SEED=[];
 const KEY='tj_v1',$=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const F=['id','date','time','account','pair','session','dir','tf','htf','strat','rr','did','pnl','risk','r','quick','bestalt','whatif','maxr','mistake','mnote','rule','logic','note'];
+const F=['id','date','time','account','pair','session','dir','tf','htf','strat','rr','did','pnl','risk','r','quick','bestalt','whatif','maxr','mistake','mnote','rule','style','logic','note'];
 const ARR=['htf','strat','mistake'],NUM=['rr','pnl','risk','r','whatif','maxr'],TFS=['5M','15M','1H','4H','1D'],BIAS=['Bullish','Bearish','Sideways'];
-const DEF={account:['Funded','Real','Personal'],pair:['XAUUSD','BTC','US30','USTEC','XAGUSD'],session:['Asian','London','New York'],dir:['Buy','Sell'],tf:['1m','3m','5m','15m','1h'],did:['TP hit','SL hit','Trailed SL','C to C','Self book','Hold for more profit'],quick:['Immediate Profit','Immediate Loss'],bestalt:['As planned','Hold original SL/TP','Remove TP + aggressive trail','Book C to C','Trail SL after recovery','Hold for bigger profit','Book as per TP'],htf:['5m','15m','1h','4h','1d'],strat:['EMA','Market structure','Resistance zone','Support zone','Trendline','Price action','Breakout'],mistake:['No mistake','Against levels','Ignored price action','Revenge trade','Overtrade','Early exit','No setup']};
+const DEF={style:['Scalp','Intraday','Swing'],account:['Funded','Real','Personal'],pair:['XAUUSD','BTC','US30','USTEC','XAGUSD'],session:['Asian','London','New York'],dir:['Buy','Sell'],tf:['1m','3m','5m','15m','1h'],did:['TP hit','SL hit','Trailed SL','C to C','Self book','Hold for more profit'],quick:['Immediate Profit','Immediate Loss'],bestalt:['As planned','Hold original SL/TP','Remove TP + aggressive trail','Book C to C','Trail SL after recovery','Hold for bigger profit','Book as per TP'],htf:['5m','15m','1h','4h','1d'],strat:['EMA','Market structure','Resistance zone','Support zone','Trendline','Price action','Breakout'],mistake:['No mistake','Against levels','Ignored price action','Revenge trade','Overtrade','Early exit','No setup']};
 let S;try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!S||!S.trades)S={trades:SEED,url:'',t:0,last:{}};
 S.lists=S.lists||{};let edit=null,tmr;
@@ -53,56 +58,91 @@ const out=t=>t.pnl>0?'Profit':t.pnl<0?'Loss':'Breakeven';
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>show(b.dataset.t));
 function show(t){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.t==t));['add','list','ana','data'].forEach(s=>$('#'+s).classList.toggle('hide',s!=t));({add:rAdd,list:rList,ana:rAna,data:rData})[t]()}
 // ---------- add / edit
-let ch={};
-function chips(k){return `<div class="chips" data-k="${k}">${opts(k).map(o=>`<span class="chip ${(ch[k]||[]).includes(o)?'on':''}">${esc(o)}</span>`).join('')}<span class="chip" data-add="1">+ new</span></div>`}
-function inp(k,l,t='text'){return `<div><label>${l}</label><input id="f_${k}" type="${t}" ${t=='number'?'step="any"':''}${DEF[k]||['account','pair'].includes(k)?` list="dl_${k}"`:''}></div>`+(DEF[k]?`<datalist id="dl_${k}">${opts(k).map(o=>`<option>${esc(o)}</option>`).join('')}</datalist>`:'')}
-function rAdd(){const t=edit?S.trades.find(x=>x.id==edit):null,L=S.last||{};
-$('#add').innerHTML=`<div class="card"><h3>${t?'Edit trade #'+t.id:'New trade'}</h3><div class="grid">
-${inp('date','Date','date')}${inp('time','Entry time')}${inp('account','Account')}${inp('pair','Pair')}${inp('session','Session')}${inp('dir','Direction')}${inp('tf','Entry TF')}${inp('rr','Planned RR (1:x → x)','number')}</div>
-<div style="margin-top:8px"><label>HTF trend at entry (each timeframe)</label><div class="grid">${TFS.map(x=>`<div><label>${x}</label><select data-tf="${x}"><option value="">–</option>${BIAS.map(b=>`<option>${b}</option>`).join('')}</select></div>`).join('')}</div></div><div style="margin-top:8px"><label>Strategy</label>${chips('strat')}</div>
-<div class="grid" style="margin-top:8px">${inp('did','What I did')}${inp('pnl','Actual P&amp;L ($)','number')}${inp('risk','Risk / SL size ($)','number')}${inp('r','Actual R (auto if risk filled)','number')}${inp('quick','Quick view')}${inp('bestalt','Best alternative')}${inp('whatif','What-if result ($)','number')}${inp('maxr','Max R price reached','number')}</div>
-<div style="margin-top:8px"><label>Mistake</label>${chips('mistake')}</div>
-<div class="grid" style="margin-top:8px"><div><label>Rule followed?</label><select id="f_rule"><option value="">–</option><option>Yes</option><option>No</option></select></div></div><div class="grid" style="margin-top:8px">${['entry','result'].map(k=>`<div><label>${k=='entry'?'Entry screenshots (1m + HTF)':'Exit / result screenshots'}: click box, then Ctrl+V</label><div class="pz" tabindex="0" data-z="${k}"></div></div>`).join('')}</div>
-<div class="grid" style="margin-top:8px"><div><label>Logic / market view</label><textarea id="f_logic"></textarea></div><div><label>Mistake note / learning</label><textarea id="f_mnote"></textarea></div><div><label>Note</label><textarea id="f_note"></textarea></div></div>
-<div class="row" style="margin-top:10px"><button class="btn" id="sv">${t?'Update':'Save trade'}</button>${t?'<button class="btn s" id="cn">Cancel</button>':''}</div></div>`;
-const v=t||{date:new Date().toISOString().slice(0,10),account:L.account||'',pair:L.pair||'',tf:L.tf||'',session:'',htf:[],strat:L.strat||[],mistake:[]};
-ch={htf:[...(v.htf||[])],strat:[...(v.strat||[])],mistake:[...(v.mistake||[])]};
-F.forEach(k=>{const e=$('#f_'+k);if(e&&!ARR.includes(k))e.value=v[k]??''});
+let ch={},sv={},rm={},ruleDirty=false;const MULTI=['strat','mistake'],SINGLE=['account','pair','session','dir','tf','did','quick','bestalt','style'];
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const isOn=(k,o)=>MULTI.includes(k)?(ch[k]||[]).includes(o):sv[k]==o;
+function segIn(k){const L=[...new Set([...opts(k),...(MULTI.includes(k)?ch[k]||[]:[sv[k]])].filter(Boolean))];return L.map(o=>`<span class="chip ${isOn(k,o)?'on':''}" data-v="${esc(o)}">${esc(o)}${rm[k]?' ✕':''}</span>`).join('')+`<span class="chip add" data-a="1">＋ add</span><span class="chip add" data-m="1">${rm[k]?'✔ done':'✎ edit list'}</span>`}
+const seg=k=>`<div class="chips seg ${rm[k]?'rm':''}" data-s="${k}">${segIn(k)}</div>`;
+function segBind(){document.querySelectorAll('#add .seg').forEach(g=>g.onclick=e=>{const k=g.dataset.s,c=e.target.closest('.chip'),M=MULTI.includes(k);if(!c)return;
+if(c.dataset.a){const n=(prompt('New option')||'').trim();if(n){S.lists[k]=[...opts(k),n];save();if(M)ch[k]=[...(ch[k]||[]),n];else sv[k]=n}}
+else if(c.dataset.m)rm[k]=!rm[k];
+else{const o=c.dataset.v;if(rm[k]){S.lists[k]=opts(k).filter(x=>x!=o);save();if(M)ch[k]=(ch[k]||[]).filter(x=>x!=o);else if(sv[k]==o)sv[k]=''}
+else if(M)ch[k]=isOn(k,o)?ch[k].filter(x=>x!=o):[...(ch[k]||[]),o];else sv[k]=sv[k]==o?'':o}
+g.classList.toggle('rm',!!rm[k]);g.innerHTML=segIn(k)})}
+const grow=e=>{e.style.height='auto';e.style.height=Math.max(120,e.scrollHeight+4)+'px'};
+const ta=(k,l)=>`<div class="fld"><label>${l} <a class="ex" data-ex="${k}">⤢ expand</a></label><textarea id="f_${k}" class="ta" rows="4"></textarea></div>`;
+const nf=(k,l)=>`<div><label>${l}</label><input id="f_${k}" type="number" step="any" inputmode="decimal"></div>`;
+function rAdd(){const t=edit?S.trades.find(x=>x.id==edit):null,L=S.last||{},v=t||{date:iso(new Date()),account:L.account,pair:L.pair,tf:L.tf,session:'New York',style:'Scalp',strat:L.strat,htf:[],mistake:[]};
+sv={};SINGLE.forEach(k=>sv[k]=v[k]||'');ch={htf:[...(v.htf||[])],strat:[...(v.strat||[])],mistake:[...(v.mistake||[])]};rm={};ruleDirty=false;
+$('#add').innerHTML=`<div class="card"><h3>${t?'✏️ Edit trade #'+t.id:'➕ New trade'}</h3>
+<div class="sec">1 · Trade setup</div>
+<div class="grid"><div><label>Date</label><input id="f_date" type="date"></div><div><label>Entry time</label><input id="f_time" placeholder="e.g. 7:45 pm"></div></div>
+<div class="fld" style="margin-top:10px"><label>Account</label>${seg('account')}</div><div class="fld"><label>Pair</label>${seg('pair')}</div><div class="fld"><label>Session</label>${seg('session')}</div><div class="fld"><label>Direction</label>${seg('dir')}</div><div class="fld"><label>Entry timeframe</label>${seg('tf')}</div>
+<div class="sec">2 · Market context</div>
+<label>HTF trend at entry</label><div class="grid">${TFS.map(x=>`<div><label>${x}</label><select data-tf="${x}"><option value="">–</option>${BIAS.map(b=>`<option>${b}</option>`).join('')}</select></div>`).join('')}</div>
+<div class="fld" style="margin-top:10px"><label>Strategy</label>${seg('strat')}</div><div class="grid">${nf('rr','Planned RR (1:x → type x)')}</div>${ta('logic','Logic / market view')}
+<div class="sec">3 · Result</div>
+<div class="fld"><label>What I did</label>${seg('did')}</div>
+<div class="fld"><label>Actual P&amp;L ($): type amount, then tap Profit or Loss</label><div class="row"><input id="f_pnl" type="number" step="any" inputmode="decimal" placeholder="amount"><button type="button" class="btn s" id="pp">＋ Profit</button><button type="button" class="btn s" id="pl">－ Loss</button></div></div>
+<div class="grid">${nf('risk','Risk / SL size ($)')}${nf('r','Actual R (auto if risk filled)')}</div>
+<div class="fld" style="margin-top:10px"><label>Quick view</label>${seg('quick')}</div>
+<div class="sec">4 · Review</div>
+<div class="fld"><label>Best alternative</label>${seg('bestalt')}</div><div class="grid">${nf('whatif','What-if result ($)')}${nf('maxr','Max R price reached')}</div>
+<div class="fld" style="margin-top:10px"><label>Mistake</label>${seg('mistake')}</div>${ta('mnote','Mistake note / learning')}
+<label class="ck"><input type="checkbox" id="f_rule"> Rule followed ✔</label>${ta('note','Note')}
+<div class="grid">${['entry','result'].map(k=>`<div><label>${k=='entry'?'Entry screenshots (1m + HTF)':'Exit / result screenshots'}: click box, then Ctrl+V</label><div class="pz" tabindex="0" data-z="${k}"></div></div>`).join('')}</div>
+<div class="sec">5 · Trading style</div><div class="fld">${seg('style')}</div>
+<div class="sbar"><button class="btn" id="sv">${t?'Update trade':'Save trade'}</button>${t?'<button class="btn s" id="cn">Cancel</button>':''}</div></div>`;
+['date','time','rr','pnl','risk','r','whatif','maxr','logic','mnote','note'].forEach(k=>{$('#f_'+k).value=v[k]??''});
+$('#f_rule').checked=v.rule=='Yes';$('#f_rule').onchange=()=>ruleDirty=true;
+document.querySelectorAll('.ta').forEach(a=>{grow(a);a.oninput=()=>grow(a)});
 document.querySelectorAll('[data-tf]').forEach(s=>{const m=(v.htf||[]).find(x=>x.startsWith(s.dataset.tf+' '));s.value=m?m.split(' ')[1]:''});
+segBind();
+document.querySelectorAll('.ex').forEach(a=>a.onclick=()=>{const f=$('#f_'+a.dataset.ex);modal(`<h3>${esc(a.parentNode.textContent.replace('⤢ expand','').trim())}</h3><textarea id="mx" style="height:60vh;font-size:16px;line-height:1.6"></textarea><p class="m">Whatever you type is saved into the form instantly. Close when done.</p>`);const m=$('#mx');m.value=f.value;m.focus();m.oninput=()=>{f.value=m.value;grow(f)}});
+$('#pp').onclick=()=>{const e=$('#f_pnl');if(e.value!=='')e.value=Math.abs(+e.value)};$('#pl').onclick=()=>{const e=$('#f_pnl');if(e.value!=='')e.value=-Math.abs(+e.value)};
 shots={entry:[],result:[]};zone='entry';drawZ();if(t)sget(t.id).then(x=>{shots=x;drawZ()});
 document.querySelectorAll('.pz').forEach(z=>{z.onfocus=z.onclick=()=>{zone=z.dataset.z;document.querySelectorAll('.pz').forEach(y=>y.classList.toggle('on',y==z))};z.ondragover=e=>e.preventDefault();z.ondrop=async e=>{e.preventDefault();zone=z.dataset.z;for(const f of e.dataTransfer.files)if(f.type.startsWith('image/'))shots[zone].push(await comp(f));drawZ()}});
-document.querySelectorAll('#add .chips').forEach(c=>c.onclick=e=>{const k=c.dataset.k,s=e.target;if(!s.classList.contains('chip'))return;
-if(s.dataset.add){const n=prompt('New option');if(n){S.lists[k]=[...opts(k),n.trim()];save();ch[k].push(n.trim());c.outerHTML=chips(k);rAddKeep()}return}
-const x=s.textContent;ch[k]=ch[k].includes(x)?ch[k].filter(y=>y!=x):[...ch[k],x];s.classList.toggle('on')});
-$('#sv').onclick=()=>{const o={id:t?t.id:Math.max(0,...S.trades.map(x=>x.id))+1};F.forEach(k=>{if(k=='id')return;const e=$('#f_'+k);o[k]=ARR.includes(k)?ch[k]:NUM.includes(k)?(e.value===''?null:+e.value):e.value.trim()});
+$('#sv').onclick=()=>{const g=k=>$('#f_'+k).value,n=k=>g(k)===''?null:+g(k);
+const o={id:t?t.id:Math.max(0,...S.trades.map(x=>x.id))+1,date:g('date'),time:g('time').trim(),...sv,strat:ch.strat,mistake:ch.mistake,rr:n('rr'),pnl:n('pnl'),risk:n('risk'),r:n('r'),whatif:n('whatif'),maxr:n('maxr'),logic:g('logic').trim(),mnote:g('mnote').trim(),note:g('note').trim(),rule:(ruleDirty||!t||t.rule)?($('#f_rule').checked?'Yes':'No'):''};
 o.htf=[...(ch.htf||[]).filter(x=>!/ (Bullish|Bearish|Sideways)$/.test(x)),...[...document.querySelectorAll('[data-tf]')].filter(s=>s.value).map(s=>s.dataset.tf+' '+s.value)];
-if(!o.date||o.pnl==null){alert('Date and P&L are required');return}
+if(!o.date||o.date<'2000-01-01'||o.pnl==null){alert('Please check: Date (4-digit year) and P&L are required');return}
 if(o.risk>0&&o.r==null)o.r=Math.round(o.pnl/o.risk*100)/100;
-['account','pair','session','dir','tf','did','quick','bestalt'].forEach(k=>{if(o[k]&&S.lists[k]&&!S.lists[k].includes(o[k]))S.lists[k].push(o[k])});
 if(t)Object.assign(t,o);else S.trades.push(o);S.last={account:o.account,pair:o.pair,tf:o.tf,strat:o.strat};sput(o.id,shots);edit=null;save();show('list')};
 if($('#cn'))$('#cn').onclick=()=>{edit=null;rAdd()}}
-function rAddKeep(){document.querySelectorAll('#add .chips').forEach(c=>c.replaceWith(c))}
-// ---------- list
+// ---------- list + shared filter bar
 let sortK='date',sortD=-1,q='';
-function rList(){const rows=S.trades.filter(t=>!q||JSON.stringify(t).toLowerCase().includes(q)).sort((a,b)=>(a[sortK]>b[sortK]?1:-1)*sortD||b.id-a.id);
+const filt=t=>(!flt.account||t.account==flt.account)&&(!flt.pair||t.pair==flt.pair)&&(!flt.from||t.date>=flt.from)&&(!flt.to||t.date<=flt.to);
+function fbar(id,cb){const el=$('#'+id),sel=(k,l)=>`<div><label>${l}</label><select data-f="${k}"><option value="">All</option>${opts(k).map(o=>`<option ${flt[k]==o?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
+el.innerHTML=`<div class="card"><div class="chips" style="margin-bottom:8px">${[['all','All time'],['month','This month'],['30d','Last 30 days'],['year','This year'],['new','📌 New account']].map(([k,l])=>`<span class="chip" data-q="${k}">${l}</span>`).join('')}</div>
+<div class="row">${sel('account','Account')}${sel('pair','Pair')}<div><label>From date</label><input type="date" class="df" value="${flt.from}"></div><div><label>To date</label><input type="date" class="dt" value="${flt.to}"></div><div style="flex:0 0 auto"><button class="btn ap">Apply ▶</button></div></div>
+<p class="m" style="margin:8px 0 0;font-size:12px">${S.acctStart?'📌 New account start: <b>'+S.acctStart+'</b> · ':''}<a href="#" class="sp" style="color:var(--ac)">use the “From” date as my new-account start</a></p></div>`;
+const read=()=>{const a=el.querySelector('.df').value,b=el.querySelector('.dt').value;if((a&&(a<'2000-01-01'||a>'2100-01-01'))||(b&&(b<'2000-01-01'||b>'2100-01-01'))){alert('Please enter a full 4-digit year (like 2026)');return false}if(a&&b&&a>b){alert('From date is after To date');return false}flt.from=a;flt.to=b;return true};
+el.querySelectorAll('select[data-f]').forEach(s=>s.onchange=()=>{flt[s.dataset.f]=s.value;cb()});
+el.querySelector('.ap').onclick=()=>{if(read())cb()};
+el.querySelector('.sp').onclick=e=>{e.preventDefault();if(!read())return;if(!flt.from){alert('Pehle From date daalo');return}S.acctStart=flt.from;save();fbar(id,cb)};
+el.querySelectorAll('[data-q]').forEach(c=>c.onclick=()=>{const k=c.dataset.q,d=new Date();
+if(k=='all'){flt.from='';flt.to=''}else if(k=='month'){flt.from=iso(new Date(d.getFullYear(),d.getMonth(),1));flt.to=''}else if(k=='30d'){flt.from=iso(new Date(d.getTime()-30*864e5));flt.to=''}else if(k=='year'){flt.from=d.getFullYear()+'-01-01';flt.to=''}else{if(!S.acctStart){alert('Pehle From date daalo aur niche wala “use the From date as my new-account start” dabao');return}flt.from=S.acctStart;flt.to=''}
+fbar(id,cb);cb()})}
+function rList(){$('#list').innerHTML='<div id="fl"></div><div class="card"><div class="row"><input id="q" placeholder="🔍 Search (pair, strategy, note...)"><span id="sm" class="m"></span></div></div><div class="card sc" id="lt"></div>';fbar('fl',listBody);const i=$('#q');i.value=q;i.oninput=e=>{q=e.target.value.toLowerCase();listBody()};listBody()}
+function listBody(){const rows=S.trades.filter(filt).filter(t=>!q||JSON.stringify(t).toLowerCase().includes(q)).sort((a,b)=>(a[sortK]>b[sortK]?1:-1)*sortD||b.id-a.id),s=stats(rows);
 const cols=[['date','Date'],['account','Acc'],['pair','Pair'],['tf','TF'],['strat','Strategy'],['rr','RR'],['did','Did'],['pnl','P&L'],['rule','Rule']];
-$('#list').innerHTML=`<div class="card"><div class="row"><input id="q" placeholder="Search..." value="${esc(q)}"><span class="m">${rows.length} trades · net <b class="${cl(rows.reduce((a,t)=>a+t.pnl,0))}">${fm(rows.reduce((a,t)=>a+t.pnl,0))}</b></span></div></div>
-<div class="card sc"><table><tr>${cols.map(c=>`<th data-k="${c[0]}">${c[1]}${sortK==c[0]?(sortD>0?' ▲':' ▼'):''}</th>`).join('')}<th></th></tr>${rows.map(t=>`<tr title="${esc(t.mnote||t.logic)}"><td>${t.date}</td><td>${esc(t.account)}</td><td>${esc(t.pair)}</td><td>${esc(t.tf)}</td><td>${esc((t.strat||[]).join(', '))}</td><td>${t.rr??'–'}</td><td>${esc(t.did)}</td><td class="${cl(t.pnl)}">${fm(t.pnl)}</td><td>${t.rule=='Yes'?'✔':t.rule=='No'?'✘':''}</td><td><button class="btn s" data-v="${t.id}">View</button> <button class="btn s" data-e="${t.id}">Edit</button> <button class="btn s" data-x="${t.id}">✕</button></td></tr>`).join('')}</table></div>`;
-$('#q').oninput=e=>{q=e.target.value.toLowerCase();rList();$('#q').focus()};
-document.querySelectorAll('#list th[data-k]').forEach(h=>h.onclick=()=>{sortD=sortK==h.dataset.k?-sortD:-1;sortK=h.dataset.k;rList()});
-document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>openView(+b.dataset.v));
-document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{edit=b.dataset.e;show('add')});
-document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Delete this trade?')){S.trades=S.trades.filter(t=>t.id!=b.dataset.x);save();rList()}})}
+$('#sm').innerHTML=`${rows.length} trades · net <b class="${cl(s.pnl)}">${fm(s.pnl)}</b> · win ${s.wr.toFixed(0)}%`;
+$('#lt').innerHTML=`<table><tr>${cols.map(c=>`<th data-k="${c[0]}">${c[1]}${sortK==c[0]?(sortD>0?' ▲':' ▼'):''}</th>`).join('')}<th></th></tr>${rows.map(t=>`<tr><td>${t.date}</td><td>${esc(t.account)}</td><td>${esc(t.pair)}</td><td>${esc(t.tf)}</td><td>${esc((t.strat||[]).join(', '))}</td><td>${t.rr??'–'}</td><td>${esc(t.did)}</td><td class="${cl(t.pnl)}">${fm(t.pnl)}</td><td>${t.rule=='Yes'?'✔':t.rule=='No'?'✘':''}</td><td><button class="btn s" data-v="${t.id}">View</button> <button class="btn s" data-e="${t.id}">Edit</button> <button class="btn s" data-x="${t.id}">✕</button></td></tr>`).join('')}</table>`;
+document.querySelectorAll('#lt th[data-k]').forEach(h=>h.onclick=()=>{sortD=sortK==h.dataset.k?-sortD:-1;sortK=h.dataset.k;listBody()});
+document.querySelectorAll('#lt [data-v]').forEach(b=>b.onclick=()=>openView(+b.dataset.v));
+document.querySelectorAll('#lt [data-e]').forEach(b=>b.onclick=()=>{edit=b.dataset.e;show('add')});
+document.querySelectorAll('#lt [data-x]').forEach(b=>b.onclick=()=>{if(confirm('Delete this trade?')){S.trades=S.trades.filter(t=>t.id!=b.dataset.x);save();listBody()}})}
 // ---------- analysis
 let flt={account:'',pair:'',from:'',to:''},dim='strat';
 function stats(a){const n=a.length,w=a.filter(t=>t.pnl>0),l=a.filter(t=>t.pnl<0),gw=w.reduce((s,t)=>s+t.pnl,0),gl=-l.reduce((s,t)=>s+t.pnl,0),pnl=gw-gl;
 let eq=0,pk=0,dd=0,ms=0,ml=0,cw=0,cL=0;[...a].sort((x,y)=>x.date>y.date?1:x.date<y.date?-1:x.id-y.id).forEach(t=>{eq+=t.pnl;pk=Math.max(pk,eq);dd=Math.max(dd,pk-eq);if(t.pnl>0){cw++;cL=0}else if(t.pnl<0){cL++;cw=0}else{cw=cL=0}ms=Math.max(ms,cw);ml=Math.max(ml,cL)});
 const rs=a.filter(t=>t.r!=null);return{n,w:w.length,l:l.length,be:n-w.length-l.length,pnl,gw,gl,wr:n?w.length/n*100:0,pf:gl?gw/gl:gw?99:0,avg:n?pnl/n:0,aw:w.length?gw/w.length:0,al:l.length?-gl/l.length:0,dd,ms,ml,ar:rs.length?rs.reduce((s,t)=>s+t.r,0)/rs.length:null}}
 const hr=t=>{const m=/(\d+):(\d+)\s*(am|pm)?/i.exec(t.time||'');if(!m)return null;let h=+m[1];if(m[3]&&m[3].toLowerCase()=='pm'&&h<12)h+=12;if(!m[3]&&h<12&&h>=5)h+=12;return h%24};
-const DIMS={account:['Account',t=>[t.account]],pair:['Pair',t=>[t.pair]],strat:['Strategy',t=>t.strat],htf:['HTF confirmation',t=>t.htf],tf:['Entry TF',t=>[t.tf]],session:['Session',t=>[t.session]],dir:['Direction',t=>[t.dir]],did:['What I did',t=>[t.did]],quick:['Quick view',t=>[t.quick]],mistake:['Mistake',t=>t.mistake],rule:['Rule followed',t=>[t.rule]],rr:['Planned RR',t=>[t.rr!=null?'1:'+Math.round(t.rr*2)/2:'']],wd:['Weekday',t=>['Sun Mon Tue Wed Thu Fri Sat'.split(' ')[new Date(t.date).getDay()]]],mo:['Month',t=>[t.date.slice(0,7)]],maxr:['Max R reached',t=>[t.maxr==null?'':t.maxr<1?'<1R':t.maxr<2?'1-2R':t.maxr<3?'2-3R':'3R+']],htfa:['HTF trend alignment',t=>{if(!t.dir)return[''];const w=t.dir=='Buy'?'Bullish':'Bearish',o=w=='Bullish'?'Bearish':'Bullish',x=(t.htf||[]).filter(h=>/ (Bullish|Bearish|Sideways)$/.test(h));if(!x.length)return[''];return[x.filter(h=>h.endsWith(w)).length+' with / '+x.filter(h=>h.endsWith(o)).length+' against']}],hr:['Entry hour',t=>[hr(t)==null?'':hr(t)+':00']]};
+const DIMS={account:['Account',t=>[t.account]],pair:['Pair',t=>[t.pair]],strat:['Strategy',t=>t.strat],htf:['HTF confirmation',t=>t.htf],tf:['Entry TF',t=>[t.tf]],session:['Session',t=>[t.session]],dir:['Direction',t=>[t.dir]],did:['What I did',t=>[t.did]],quick:['Quick view',t=>[t.quick]],mistake:['Mistake',t=>t.mistake],rule:['Rule followed',t=>[t.rule]],rr:['Planned RR',t=>[t.rr!=null?'1:'+Math.round(t.rr*2)/2:'']],wd:['Weekday',t=>['Sun Mon Tue Wed Thu Fri Sat'.split(' ')[new Date(t.date).getDay()]]],mo:['Month',t=>[t.date.slice(0,7)]],style:['Trading style',t=>[t.style]],maxr:['Max R reached',t=>[t.maxr==null?'':t.maxr<1?'<1R':t.maxr<2?'1-2R':t.maxr<3?'2-3R':'3R+']],htfa:['HTF trend alignment',t=>{if(!t.dir)return[''];const w=t.dir=='Buy'?'Bullish':'Bearish',o=w=='Bullish'?'Bearish':'Bullish',x=(t.htf||[]).filter(h=>/ (Bullish|Bearish|Sideways)$/.test(h));if(!x.length)return[''];return[x.filter(h=>h.endsWith(w)).length+' with / '+x.filter(h=>h.endsWith(o)).length+' against']}],hr:['Entry hour',t=>[hr(t)==null?'':hr(t)+':00']]};
 function grp(a,f){const m={};a.forEach(t=>(f(t)||[]).forEach(k=>{k=k||'(blank)';(m[k]=m[k]||[]).push(t)}));return Object.entries(m).map(([k,v])=>({k,...stats(v)})).sort((x,y)=>y.pnl-x.pnl)}
 function tbl(rows){const mx=Math.max(1,...rows.map(r=>Math.abs(r.pnl)));return `<div class="sc"><table><tr><th>Name</th><th>Trades</th><th>Win%</th><th>P&amp;L</th><th></th><th>Avg</th><th>PF</th></tr>${rows.map(r=>`<tr><td>${esc(r.k)}</td><td>${r.n}</td><td>${r.wr.toFixed(0)}%</td><td class="${cl(r.pnl)}">${fm(r.pnl)}</td><td style="width:90px"><div class="bar" style="width:${Math.abs(r.pnl)/mx*80}px;background:var(--${r.pnl>=0?'g':'r'})"></div></td><td>${fm(r.avg)}</td><td>${r.pf.toFixed(2)}</td></tr>`).join('')}</table></div>`}
-function rAna(){const a=S.trades.filter(t=>(!flt.account||t.account==flt.account)&&(!flt.pair||t.pair==flt.pair)&&(!flt.from||t.date>=flt.from)&&(!flt.to||t.date<=flt.to)),s=stats(a);
+function rAna(){$('#ana').innerHTML='<div id="fa"></div><div id="ar"></div>';fbar('fa',anaBody);anaBody()}
+function anaBody(){const a=S.trades.filter(t=>(!flt.account||t.account==flt.account)&&(!flt.pair||t.pair==flt.pair)&&(!flt.from||t.date>=flt.from)&&(!flt.to||t.date<=flt.to)),s=stats(a);
 const sel=(k,l)=>`<div><label>${l}</label><select data-f="${k}"><option value="">All</option>${opts(k).map(o=>`<option ${flt[k]==o?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
 const K=(l,v,c='')=>`<div class="kpi"><small>${l}</small><b class="${c}">${v}</b></div>`;
 const sorted=[...a].sort((x,y)=>x.date>y.date?1:x.date<y.date?-1:x.id-y.id);
@@ -112,14 +152,13 @@ const days={};a.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));const tpd=Ob
 const nb=[1,2,3,4].map(k=>{const r=tpd.filter(d=>k<4?d.length==k:d.length>=4).flat();return{k:k<4?k+' trade'+(k>1?'s':'')+'/day':'4+/day',...stats(r)}}).filter(x=>x.n);
 const wi=a.filter(t=>t.whatif!=null),wis=wi.reduce((x,t)=>x+t.whatif,0),wia=wi.reduce((x,t)=>x+t.pnl,0);
 const rf=grp(a,t=>[t.rule||'(blank)']);
-$('#ana').innerHTML=`<div class="card"><div class="row">${sel('account','Account')}${sel('pair','Pair')}<div><label>From</label><input type="date" data-f="from" value="${flt.from}"></div><div><label>To</label><input type="date" data-f="to" value="${flt.to}"></div></div></div>
-<div class="grid" style="margin-bottom:12px">${K('Net P&L',fm(s.pnl),cl(s.pnl))}${K('Trades',s.n)}${K('Win rate',s.wr.toFixed(1)+'%')}${K('Profit factor',s.pf.toFixed(2))}${K('Expectancy / trade',fm(s.avg),cl(s.avg))}${K('Avg win',fm(s.aw),'g')}${K('Avg loss',fm(s.al),'r')}${K('Win : Loss (W/L/BE)',s.w+' / '+s.l+' / '+s.be)}${K('Max drawdown',fm(-s.dd),'r')}${K('Max win streak',s.ms)}${K('Max loss streak',s.ml)}${K('Avg R',s.ar==null?'–':s.ar.toFixed(2))}</div>
+$('#ar').innerHTML=`<div class="grid" style="margin-bottom:12px">${K('Net P&L',fm(s.pnl),cl(s.pnl))}${K('Trades',s.n)}${K('Win rate',s.wr.toFixed(1)+'%')}${K('Profit factor',s.pf.toFixed(2))}${K('Expectancy / trade',fm(s.avg),cl(s.avg))}${K('Avg win',fm(s.aw),'g')}${K('Avg loss',fm(s.al),'r')}${K('Win : Loss (W/L/BE)',s.w+' / '+s.l+' / '+s.be)}${K('Max drawdown',fm(-s.dd),'r')}${K('Max win streak',s.ms)}${K('Max loss streak',s.ml)}${K('Avg R',s.ar==null?'–':s.ar.toFixed(2))}</div>
 <div class="card"><h3>Equity curve</h3><canvas id="eq"></canvas></div>
 <div class="card"><div class="row"><h3 style="flex:2">Breakdown by</h3><select id="dim">${Object.entries(DIMS).map(([k,v])=>`<option value="${k}" ${dim==k?'selected':''}>${v[0]}</option>`).join('')}</select></div>${tbl(grp(a,DIMS[dim][1]))}</div>
 <div class="card"><h3>Exit study: what I did vs what-if</h3>${tbl(grp(a,DIMS.did[1]))}${wi.length?`<p class="m">${wi.length} trades have a what-if value: actual <b class="${cl(wia)}">${fm(wia)}</b> vs what-if <b class="${cl(wis)}">${fm(wis)}</b> → difference <b class="${cl(wis-wia)}">${fm(wis-wia)}</b></p>`:'<p class="m">Fill “What-if result ($)” on trades to compare trail / early exit with the plan.</p>'}</div>
 <div class="card"><h3>Behaviour: next trade after losses</h3>${tbl(al)}<h3 style="margin-top:12px">Overtrading: trades per day</h3>${tbl(nb)}<h3 style="margin-top:12px">Rule followed vs broken</h3>${tbl(rf)}</div>
 <div class="card"><h3>Calendar (daily P&amp;L)</h3><div id="cal"></div></div>`;
-document.querySelectorAll('#ana [data-f]').forEach(e=>e.onchange=()=>{flt[e.dataset.f]=e.value;rAna()});$('#dim').onchange=e=>{dim=e.target.value;rAna()};
+$('#dim').onchange=e=>{dim=e.target.value;anaBody()};
 // calendar
 const mo={};Object.entries(days).forEach(([d,v])=>{(mo[d.slice(0,7)]=mo[d.slice(0,7)]||[]).push([d,v.reduce((x,t)=>x+t.pnl,0)])});
 const mxd=Math.max(1,...Object.values(days).map(v=>Math.abs(v.reduce((x,t)=>x+t.pnl,0))));
@@ -154,10 +193,10 @@ function drawZ(){document.querySelectorAll('.pz').forEach(z=>{const k=z.dataset.
 z.querySelectorAll('img').forEach(m=>m.onclick=e=>{e.stopPropagation();modal(`<img src="${m.src}">`)});z.querySelectorAll('b').forEach(b=>b.onclick=e=>{e.stopPropagation();shots[k].splice(+b.dataset.d,1);drawZ()})})}
 document.addEventListener('paste',async e=>{if($('#add').classList.contains('hide'))return;const fs=[...(e.clipboardData?.items||[])].filter(i=>i.type.startsWith('image/')).map(i=>i.getAsFile());if(!fs.length)return;e.preventDefault();for(const f of fs)shots[zone].push(await comp(f));drawZ()});
 function modal(h){const o=document.createElement('div');o.className='ov';o.innerHTML=`<div class="in"><button class="btn s" style="float:right">Close ✕</button>${h}</div>`;o.onclick=e=>{if(e.target==o||e.target.tagName=='BUTTON')o.remove()};document.body.appendChild(o)}
-async function openView(id){const t=S.trades.find(x=>x.id==id),s=await sget(id),L=(a,v)=>v?`<p><b>${a}:</b> ${esc(v)}</p>`:'';
+async function openView(id){const t=S.trades.find(x=>x.id==id),s=await sget(id),L=(a,v)=>v?`<p style="white-space:pre-wrap;line-height:1.55"><b>${a}:</b> ${esc(v)}</p>`:'';
 modal(`<h3>${t.date} · ${esc(t.pair)} · ${esc(t.account)} · <span class="${cl(t.pnl)}">${fm(t.pnl)}</span></h3>${L('Did',t.did)}${L('Strategy',(t.strat||[]).join(', '))}${L('HTF',(t.htf||[]).join(', '))}${L('Logic',t.logic)}${L('Mistake',t.mnote)}${L('Note',t.note)}${s.entry.length?'<h3>Entry</h3>'+s.entry.map(x=>`<img src="${x}">`).join(''):''}${s.result.length?'<h3>Result</h3>'+s.result.map(x=>`<img src="${x}">`).join(''):''}`)}
 // ---------- editable dropdown lists
-const LK=[['account','Account'],['pair','Pair'],['session','Session'],['dir','Direction'],['tf','Entry TF'],['did','What I did'],['quick','Quick view'],['bestalt','Best alternative'],['strat','Strategy'],['mistake','Mistake']];let lk='pair';
+const LK=[['account','Account'],['pair','Pair'],['session','Session'],['dir','Direction'],['tf','Entry TF'],['did','What I did'],['quick','Quick view'],['bestalt','Best alternative'],['strat','Strategy'],['mistake','Mistake'],['style','Trading style']];let lk='pair';
 function rLists(){return `<div class="card"><h3>Edit dropdown lists</h3><select id="lk">${LK.map(([k,l])=>`<option value="${k}" ${lk==k?'selected':''}>${l}</option>`).join('')}</select><div class="chips" style="margin:8px 0">${opts(lk).map(o=>`<span class="chip" data-r="${esc(o)}">${esc(o)} ✕</span>`).join('')}</div><div class="row"><input id="ln" placeholder="New option"><button class="btn" id="la">Add</button></div><p class="m">Removing hides it from the dropdown only; old trades keep their value.</p></div>`}
 function lHand(){$('#lk').onchange=e=>{lk=e.target.value;rData()};document.querySelectorAll('[data-r]').forEach(c=>c.onclick=()=>{S.lists[lk]=opts(lk).filter(x=>x!=c.dataset.r);save();rData()});$('#la').onclick=()=>{const n=$('#ln').value.trim();if(n&&!opts(lk).includes(n)){S.lists[lk]=[...opts(lk),n];save();rData()}}}
 rAdd();
