@@ -33,6 +33,13 @@ canvas{width:100%;height:220px}
 .ta{min-height:120px;font-size:15px;line-height:1.55;overflow:hidden;resize:none}.ex{color:var(--ac);cursor:pointer;float:right;font-size:12px}
 .sbar{position:sticky;bottom:0;background:var(--card);padding:10px 12px;border-top:1px solid var(--bd);margin:14px -12px -12px;display:flex;gap:8px;border-radius:0 0 12px 12px;z-index:3}
 .ck{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--tx);cursor:pointer;margin:10px 0}.ck input{width:22px;height:22px}
+.y{color:var(--y)}.kpi b{font-size:20px}.kpi i{font-style:normal;font-size:11px;color:var(--mu);display:block;margin-top:2px}
+.pl{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}.pl .chip{white-space:nowrap;font-size:14px;padding:8px 14px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin:2px}.dot.g{background:var(--g)}.dot.r{background:var(--r)}.dot.m{background:var(--mu)}
+.sb{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--bd);margin:8px 0 4px}.sb span{display:block;height:100%}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}.tiles .card{margin:0}
+.br{display:grid;grid-template-columns:minmax(70px,100px) 1fr 62px 70px;gap:6px;align-items:center;margin:6px 0;font-size:12.5px}.bk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bt{background:var(--bg);border-radius:4px;height:10px}.bb{height:10px;border-radius:4px}.bb.p{background:var(--g)}.bb.l{background:var(--r)}.bv{text-align:right;font-weight:600}.bn{color:var(--mu);font-size:11px;text-align:right}
+.ins{border-left:4px solid var(--bd);padding:8px 12px;margin:10px 0;background:var(--bg);border-radius:8px}.ins.bad{border-color:var(--r)}.ins.good{border-color:var(--g)}.ins.tip{border-color:var(--y)}.it{font-weight:600}.ib{margin-top:2px;line-height:1.5}
 </style></head><body>
 <header><b>📈 Trading Journal</b><button class="tab on" data-t="add">➕ Trade</button><button class="tab" data-t="list">📋 Trades</button><button class="tab" data-t="ana">📊 Analysis</button><button class="tab" data-t="data">⚙️ Data &amp; Backup</button></header>
 <main>
@@ -74,7 +81,7 @@ const ta=(k,l)=>`<div class="fld"><label>${l} <a class="ex" data-ex="${k}">⤢ e
 const nf=(k,l)=>`<div><label>${l}</label><input id="f_${k}" type="number" step="any" inputmode="decimal"></div>`;
 function rAdd(){const t=edit?S.trades.find(x=>x.id==edit):null,L=S.last||{},v=t||{date:iso(new Date()),account:L.account,pair:L.pair,tf:L.tf,session:'New York',style:'Scalp',strat:L.strat,htf:[],mistake:[]};
 sv={};SINGLE.forEach(k=>sv[k]=v[k]||'');ch={htf:[...(v.htf||[])],strat:[...(v.strat||[])],mistake:[...(v.mistake||[])]};rm={};ruleDirty=false;
-$('#add').innerHTML=`<div class="card"><h3>${t?'✏️ Edit trade #'+t.id:'➕ New trade'}</h3>
+$('#add').innerHTML=`<div class="card"><h3>${t?'✏️ Edit trade #'+t.id+(queue?' · '+S.trades.filter(x=>MISS(x).length&&!skipped.has(x.id)).length+' incomplete baaki':''):'➕ New trade'}</h3>${queue&&t?'<p class="m" style="margin:0">Bharna baaki: <b>'+(MISS(t).join(', ')||'sab bhara hai')+'</b></p>':''}
 <div class="sec">1 · Trade setup</div>
 <div class="grid"><div><label>Date</label><input id="f_date" type="date"></div><div><label>Entry time</label><input id="f_time" placeholder="e.g. 7:45 pm"></div></div>
 <div class="fld" style="margin-top:10px"><label>Account</label>${seg('account')}</div><div class="fld"><label>Pair</label>${seg('pair')}</div><div class="fld"><label>Session</label>${seg('session')}</div><div class="fld"><label>Direction</label>${seg('dir')}</div><div class="fld"><label>Entry timeframe</label>${seg('tf')}</div>
@@ -92,7 +99,7 @@ $('#add').innerHTML=`<div class="card"><h3>${t?'✏️ Edit trade #'+t.id:'➕ N
 <label class="ck"><input type="checkbox" id="f_rule"> Rule followed ✔</label>${ta('note','Note')}
 <div class="grid">${['entry','result'].map(k=>`<div><label>${k=='entry'?'Entry screenshots (1m + HTF)':'Exit / result screenshots'}: click box, then Ctrl+V</label><div class="pz" tabindex="0" data-z="${k}"></div></div>`).join('')}</div>
 <div class="sec">5 · Trading style</div><div class="fld">${seg('style')}</div>
-<div class="sbar"><button class="btn" id="sv">${t?'Update trade':'Save trade'}</button>${t?'<button class="btn s" id="cn">Cancel</button>':''}</div></div>`;
+<div class="sbar"><button class="btn" id="sv">${t?'Update trade':'Save trade'}</button>${t?'<button class="btn s" id="cn">Cancel</button>':''}${queue?'<button class="btn s" id="sk">Skip →</button>':''}</div></div>`;
 ['date','time','rr','pnl','risk','r','whatif','maxr','logic','mnote','note'].forEach(k=>{$('#f_'+k).value=v[k]??''});
 $('#f_rule').checked=v.rule=='Yes';$('#f_rule').onchange=()=>ruleDirty=true;
 document.querySelectorAll('.ta').forEach(a=>{grow(a);a.oninput=()=>grow(a)});
@@ -107,8 +114,8 @@ const o={id:t?t.id:Math.max(0,...S.trades.map(x=>x.id))+1,date:g('date'),time:g(
 o.htf=[...(ch.htf||[]).filter(x=>!/ (Bullish|Bearish|Sideways)$/.test(x)),...[...document.querySelectorAll('[data-tf]')].filter(s=>s.value).map(s=>s.dataset.tf+' '+s.value)];
 if(!o.date||o.date<'2000-01-01'||o.pnl==null){alert('Please check: Date (4-digit year) and P&L are required');return}
 if(o.risk>0&&o.r==null)o.r=Math.round(o.pnl/o.risk*100)/100;
-if(t)Object.assign(t,o);else S.trades.push(o);S.last={account:o.account,pair:o.pair,tf:o.tf,strat:o.strat};sput(o.id,shots);edit=null;save();show('list')};
-if($('#cn'))$('#cn').onclick=()=>{edit=null;rAdd()}}
+if(t)Object.assign(t,o);else S.trades.push(o);S.last={account:o.account,pair:o.pair,tf:o.tf,strat:o.strat};sput(o.id,shots);save();if(queue){skipped.add(o.id);const n=nextInc();if(n){edit=n.id;rAdd();scrollTo(0,0);return}queue=false;alert('Sab trades complete ✔')}edit=null;show('list')};
+if($('#cn'))$('#cn').onclick=()=>{edit=null;queue=false;rAdd()};if($('#sk'))$('#sk').onclick=()=>{skipped.add(t.id);const n=nextInc();if(n){edit=n.id;rAdd();scrollTo(0,0)}else{queue=false;edit=null;show('list')}}}
 // ---------- list + shared filter bar
 let sortK='date',sortD=-1,q='';
 const filt=t=>(!flt.account||t.account==flt.account)&&(!flt.pair||t.pair==flt.pair)&&(!flt.from||t.date>=flt.from)&&(!flt.to||t.date<=flt.to);
@@ -123,7 +130,7 @@ el.querySelector('.sp').onclick=e=>{e.preventDefault();if(!read())return;if(!flt
 el.querySelectorAll('[data-q]').forEach(c=>c.onclick=()=>{const k=c.dataset.q,d=new Date();
 if(k=='all'){flt.from='';flt.to=''}else if(k=='month'){flt.from=iso(new Date(d.getFullYear(),d.getMonth(),1));flt.to=''}else if(k=='30d'){flt.from=iso(new Date(d.getTime()-30*864e5));flt.to=''}else if(k=='year'){flt.from=d.getFullYear()+'-01-01';flt.to=''}else{if(!S.acctStart){alert('Pehle From date daalo aur niche wala “use the From date as my new-account start” dabao');return}flt.from=S.acctStart;flt.to=''}
 fbar(id,cb);cb()})}
-function rList(){$('#list').innerHTML='<div id="fl"></div><div class="card"><div class="row"><input id="q" placeholder="🔍 Search (pair, strategy, note...)"><span id="sm" class="m"></span></div></div><div class="card sc" id="lt"></div>';fbar('fl',listBody);const i=$('#q');i.value=q;i.oninput=e=>{q=e.target.value.toLowerCase();listBody()};listBody()}
+function rList(){$('#list').innerHTML='<div id="fl"></div><div class="card"><div class="row"><input id="q" placeholder="🔍 Search (pair, strategy, note...)"><span id="sm" class="m"></span><button class="btn s" id="fx" style="flex:0 0 auto"></button></div></div><div class="card sc" id="lt"></div>';fbar('fl',listBody);const i=$('#q');$('#fx').textContent='▶ Fix incomplete ('+S.trades.filter(t=>MISS(t).length).length+')';$('#fx').onclick=startQueue;i.value=q;i.oninput=e=>{q=e.target.value.toLowerCase();listBody()};listBody()}
 function listBody(){const rows=S.trades.filter(filt).filter(t=>!q||JSON.stringify(t).toLowerCase().includes(q)).sort((a,b)=>(a[sortK]>b[sortK]?1:-1)*sortD||b.id-a.id),s=stats(rows);
 const cols=[['date','Date'],['account','Acc'],['pair','Pair'],['tf','TF'],['strat','Strategy'],['rr','RR'],['did','Did'],['pnl','P&L'],['rule','Rule']];
 $('#sm').innerHTML=`${rows.length} trades · net <b class="${cl(s.pnl)}">${fm(s.pnl)}</b> · win ${s.wr.toFixed(0)}%`;
@@ -142,32 +149,78 @@ const DIMS={account:['Account',t=>[t.account]],pair:['Pair',t=>[t.pair]],strat:[
 function grp(a,f){const m={};a.forEach(t=>(f(t)||[]).forEach(k=>{k=k||'(blank)';(m[k]=m[k]||[]).push(t)}));return Object.entries(m).map(([k,v])=>({k,...stats(v)})).sort((x,y)=>y.pnl-x.pnl)}
 function tbl(rows){const mx=Math.max(1,...rows.map(r=>Math.abs(r.pnl)));return `<div class="sc"><table><tr><th>Name</th><th>Trades</th><th>Win%</th><th>P&amp;L</th><th></th><th>Avg</th><th>PF</th></tr>${rows.map(r=>`<tr><td>${esc(r.k)}</td><td>${r.n}</td><td>${r.wr.toFixed(0)}%</td><td class="${cl(r.pnl)}">${fm(r.pnl)}</td><td style="width:90px"><div class="bar" style="width:${Math.abs(r.pnl)/mx*80}px;background:var(--${r.pnl>=0?'g':'r'})"></div></td><td>${fm(r.avg)}</td><td>${r.pf.toFixed(2)}</td></tr>`).join('')}</table></div>`}
 function rAna(){$('#ana').innerHTML='<div id="fa"></div><div id="ar"></div>';fbar('fa',anaBody);anaBody()}
-function anaBody(){const a=S.trades.filter(t=>(!flt.account||t.account==flt.account)&&(!flt.pair||t.pair==flt.pair)&&(!flt.from||t.date>=flt.from)&&(!flt.to||t.date<=flt.to)),s=stats(a);
-const sel=(k,l)=>`<div><label>${l}</label><select data-f="${k}"><option value="">All</option>${opts(k).map(o=>`<option ${flt[k]==o?'selected':''}>${esc(o)}</option>`).join('')}</select></div>`;
-const K=(l,v,c='')=>`<div class="kpi"><small>${l}</small><b class="${c}">${v}</b></div>`;
-const sorted=[...a].sort((x,y)=>x.date>y.date?1:x.date<y.date?-1:x.id-y.id);
-// after-loss
-const al=[0,1,2,3].map(k=>{const r=[];let c=0;sorted.forEach(t=>{if(c==k)r.push(t);c=t.pnl<0?c+1:0});return{k:k?'After '+k+' loss'+(k>1?'es':'')+(k==3?'+':''):'After win/start',...stats(r)}}).filter(x=>x.n);
-const days={};a.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));const tpd=Object.values(days);
-const nb=[1,2,3,4].map(k=>{const r=tpd.filter(d=>k<4?d.length==k:d.length>=4).flat();return{k:k<4?k+' trade'+(k>1?'s':'')+'/day':'4+/day',...stats(r)}}).filter(x=>x.n);
-const wi=a.filter(t=>t.whatif!=null),wis=wi.reduce((x,t)=>x+t.whatif,0),wia=wi.reduce((x,t)=>x+t.pnl,0);
-const rf=grp(a,t=>[t.rule||'(blank)']);
-$('#ar').innerHTML=`<div class="grid" style="margin-bottom:12px">${K('Net P&L',fm(s.pnl),cl(s.pnl))}${K('Trades',s.n)}${K('Win rate',s.wr.toFixed(1)+'%')}${K('Profit factor',s.pf.toFixed(2))}${K('Expectancy / trade',fm(s.avg),cl(s.avg))}${K('Avg win',fm(s.aw),'g')}${K('Avg loss',fm(s.al),'r')}${K('Win : Loss (W/L/BE)',s.w+' / '+s.l+' / '+s.be)}${K('Max drawdown',fm(-s.dd),'r')}${K('Max win streak',s.ms)}${K('Max loss streak',s.ml)}${K('Avg R',s.ar==null?'–':s.ar.toFixed(2))}</div>
-<div class="card"><h3>Equity curve</h3><canvas id="eq"></canvas></div>
-<div class="card"><div class="row"><h3 style="flex:2">Breakdown by</h3><select id="dim">${Object.entries(DIMS).map(([k,v])=>`<option value="${k}" ${dim==k?'selected':''}>${v[0]}</option>`).join('')}</select></div>${tbl(grp(a,DIMS[dim][1]))}</div>
-<div class="card"><h3>Exit study: what I did vs what-if</h3>${tbl(grp(a,DIMS.did[1]))}${wi.length?`<p class="m">${wi.length} trades have a what-if value: actual <b class="${cl(wia)}">${fm(wia)}</b> vs what-if <b class="${cl(wis)}">${fm(wis)}</b> → difference <b class="${cl(wis-wia)}">${fm(wis-wia)}</b></p>`:'<p class="m">Fill “What-if result ($)” on trades to compare trail / early exit with the plan.</p>'}</div>
-<div class="card"><h3>Behaviour: next trade after losses</h3>${tbl(al)}<h3 style="margin-top:12px">Overtrading: trades per day</h3>${tbl(nb)}<h3 style="margin-top:12px">Rule followed vs broken</h3>${tbl(rf)}</div>
-<div class="card"><h3>Calendar (daily P&amp;L)</h3><div id="cal"></div></div>`;
-$('#dim').onchange=e=>{dim=e.target.value;anaBody()};
-// calendar
-const mo={};Object.entries(days).forEach(([d,v])=>{(mo[d.slice(0,7)]=mo[d.slice(0,7)]||[]).push([d,v.reduce((x,t)=>x+t.pnl,0)])});
-const mxd=Math.max(1,...Object.values(days).map(v=>Math.abs(v.reduce((x,t)=>x+t.pnl,0))));
-$('#cal').innerHTML=Object.keys(mo).sort().map(m=>`<div style="margin-bottom:8px"><label>${m} · ${fm(mo[m].reduce((x,y)=>x+y[1],0))}</label><div class="cal">${mo[m].sort().map(([d,p])=>`<div class="cd" title="${d}: ${fm(p)}" style="background:${p>0?'var(--g)':p<0?'var(--r)':'var(--mu)'};opacity:${.35+.65*Math.abs(p)/mxd}">${+d.slice(8)}</div>`).join('')}</div></div>`).join('');
-// equity
-const c=$('#eq'),x=c.getContext('2d'),W=c.width=c.clientWidth*2,H=c.height=440;let e=0;const pts=sorted.map(t=>e+=t.pnl);
-if(pts.length){const mn=Math.min(0,...pts),mx2=Math.max(0,...pts),sy=v=>H-30-(v-mn)/((mx2-mn)||1)*(H-60),sx=i=>20+i/Math.max(1,pts.length-1)*(W-40),st=getComputedStyle(document.body);
-x.strokeStyle=st.getPropertyValue('--bd');x.lineWidth=2;x.beginPath();x.moveTo(0,sy(0));x.lineTo(W,sy(0));x.stroke();x.strokeStyle=st.getPropertyValue('--ac');x.lineWidth=3;x.beginPath();pts.forEach((v,i)=>i?x.lineTo(sx(i),sy(v)):x.moveTo(sx(i),sy(v)));x.stroke();
-x.fillStyle=st.getPropertyValue('--mu');x.font='24px sans-serif';x.fillText(fm(mx2),24,22);x.fillText(fm(mn),24,H-6)}}
+function anaBody(){const a=S.trades.filter(filt),s=stats(a);
+const pills=`<div class="pl">${AT.map(([k,l])=>`<span class="chip ${atab==k?'on':''}" data-at="${k}">${l}</span>`).join('')}</div>`;
+const fn={over:vOver,coach:vCoach,where:vWhere,mist:vMist,exit:vExit,deep:vDeep}[atab];
+$('#ar').innerHTML=pills+(a.length?fn(a,s):'<div class="card m">Is range me koi trade nahi mila. Upar filter badlo.</div>');
+document.querySelectorAll('#ar [data-at]').forEach(c=>c.onclick=()=>{atab=c.dataset.at;anaBody();scrollTo(0,0)});
+if(!a.length)return;if(atab=='over')eq(sortT(a));if(atab=='coach')simBind(a);if(atab=='deep')$('#dim').onchange=e=>{dim=e.target.value;anaBody()};const fx=$('#fx');if(fx)fx.onclick=startQueue}
+// ---- helpers
+let atab='over',simSel=new Set(),simC=[],queue=false,skipped=new Set();
+const AT=[['over','🏠 Overview'],['coach','💡 Coach'],['where','🎯 Where & When'],['mist','⚠️ Mistakes'],['exit','🔧 Exits'],['deep','🔬 Deep dive']];
+const WD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],DL={account:'Account',pair:'Pair',strat:'Strategy',session:'Session',tf:'Entry TF',dir:'Direction',wd:'Weekday',hr:'Entry hour',htfa:'HTF trend alignment',style:'Trading style',mistake:'Mistake',rule:'Rule followed'},DEC=['pair','strat','session','tf','dir','wd','hr','htfa','style','mistake'];
+const G=(a,k)=>grp(a,DIMS[k][1]),GN=(a,k)=>G(a,k).filter(r=>r.k!='(blank)'),sortT=a=>[...a].sort((x,y)=>x.date>y.date?1:x.date<y.date?-1:x.id-y.id);
+const MISS=t=>{const m=[];if(!t.dir)m.push('Direction');if(!t.session)m.push('Session');if(!(t.mistake||[]).length)m.push('Mistake');if(!t.quick)m.push('Quick view');if(!t.rule)m.push('Rule');return m};
+const nextInc=()=>sortT(S.trades).reverse().find(t=>MISS(t).length&&!skipped.has(t.id));
+function startQueue(){skipped=new Set();const n=nextInc();if(!n)return alert('Sab trades complete hain ✔');queue=true;edit=n.id;show('add')}
+const K2=(l,v,c,sub)=>`<div class="kpi"><small>${l}</small><b class="${c||''}">${v}</b><i>${sub||''}</i></div>`;
+function bars(rows){const mx=Math.max(1,...rows.map(r=>Math.abs(r.pnl)));return rows.map(r=>`<div class="br"><div class="bk" title="${esc(r.k)}">${esc(r.k)}</div><div class="bt"><div class="bb ${r.pnl>=0?'p':'l'}" style="width:${Math.max(3,Math.abs(r.pnl)/mx*100)}%"></div></div><div class="bv ${cl(r.pnl)}">${fm(r.pnl)}</div><div class="bn">${r.n}t · ${r.wr.toFixed(0)}%</div></div>`).join('')}
+function tile(a,k){let r=GN(a,k);const bl=(G(a,k).find(x=>x.k=='(blank)')||{n:0}).n;if(k=='wd')r.sort((x,y)=>WD.indexOf(x.k)-WD.indexOf(y.k));else if(k=='hr')r.sort((x,y)=>parseInt(x.k)-parseInt(y.k));
+return `<div class="card"><h3>${DL[k]}</h3>${r.length?bars(r):'<p class="m">Abhi data nahi bhara</p>'}${bl?`<p class="m" style="font-size:11px;margin:4px 0 0">${bl} trades me khali</p>`:''}</div>`}
+function calH(a){const days={};a.forEach(t=>(days[t.date]=days[t.date]||[]).push(t));const mo={};Object.entries(days).forEach(([d,v])=>{(mo[d.slice(0,7)]=mo[d.slice(0,7)]||[]).push([d,v.reduce((x,t)=>x+t.pnl,0)])});const mxd=Math.max(1,...Object.values(days).map(v=>Math.abs(v.reduce((x,t)=>x+t.pnl,0))));
+return Object.keys(mo).sort().map(m=>`<div style="margin-bottom:8px"><label>${m} · ${fm(mo[m].reduce((x,y)=>x+y[1],0))}</label><div class="cal">${mo[m].sort().map(([d,p])=>`<div class="cd" title="${d}: ${fm(p)}" style="background:${p>0?'var(--g)':p<0?'var(--r)':'var(--mu)'};opacity:${.35+.65*Math.abs(p)/mxd}">${+d.slice(8)}</div>`).join('')}</div></div>`).join('')}
+function eq(so){const c=$('#eq'),x=c.getContext('2d'),W=c.width=c.clientWidth*2,H=c.height=440;let e=0;const pts=so.map(t=>e+=t.pnl);if(!pts.length)return;const mn=Math.min(0,...pts),mx=Math.max(0,...pts),sy=v=>H-30-(v-mn)/((mx-mn)||1)*(H-60),sx=i=>20+i/Math.max(1,pts.length-1)*(W-40),st=getComputedStyle(document.body);
+x.strokeStyle=st.getPropertyValue('--bd');x.lineWidth=2;x.beginPath();x.moveTo(0,sy(0));x.lineTo(W,sy(0));x.stroke();x.strokeStyle=st.getPropertyValue('--ac');x.lineWidth=3;x.beginPath();pts.forEach((v,i)=>i?x.lineTo(sx(i),sy(v)):x.moveTo(sx(i),sy(v)));x.stroke();x.fillStyle=st.getPropertyValue('--mu');x.font='24px sans-serif';x.fillText(fm(mx),24,22);x.fillText(fm(mn),24,H-6)}
+// ---- Overview
+function vOver(a,s){const pay=s.al?s.aw/Math.abs(s.al):0,be=pay?100/(1+pay):0,so=sortT(a),last=so.slice(-20);let cs=0,ct='';for(let i=so.length-1;i>=0;i--){const x=so[i].pnl>0?'win':so[i].pnl<0?'loss':'BE';if(!ct)ct=x;if(x==ct)cs++;else break}
+const rl=a.filter(t=>t.rule=='Yes'||t.rule=='No'),rp=rl.length?rl.filter(t=>t.rule=='Yes').length/rl.length*100:null,gap=s.wr-be,W=s.n?s.w/s.n*100:0,Lw=s.n?s.l/s.n*100:0;
+const v=s.pnl>0?(s.pf>=1.3?'Tu profit me hai aur edge theek dikh raha hai 👍':'Profit me hai, par margin patla hai. Leak band karna zaroori.'):'Abhi nuksan me hai. Coach tab me dekh paisa kahan se ja raha hai.';
+return `<div class="card"><div class="m" style="font-size:12px">${flt.account||'All accounts'} · ${flt.pair||'All pairs'} · ${flt.from||'shuru'} → ${flt.to||'aaj'}</div><div class="${cl(s.pnl)}" style="font-size:32px;font-weight:700">${fm(s.pnl)}</div><p style="margin:4px 0">${v}</p>
+<div class="sb"><span style="width:${W}%;background:var(--g)"></span><span style="width:${Lw}%;background:var(--r)"></span></div><div class="m" style="font-size:12px">${s.w} win · ${s.l} loss · ${s.be} breakeven (${s.n} trades)</div>
+${be?`<p style="margin:10px 0 0">Tera win rate <b>${s.wr.toFixed(0)}%</b>. Tere avg win/loss ke hisaab se breakeven ke liye <b>${be.toFixed(0)}%</b> chahiye → ${gap>=0?`<span class="g">tu ${gap.toFixed(0)}% upar hai ✅</span>`:`<span class="r">tu ${(-gap).toFixed(0)}% neeche hai ❌</span>`}</p>`:''}</div>
+<div class="grid" style="margin-bottom:12px">${K2('Profit factor',s.pf.toFixed(2),s.pf>=1.5?'g':s.pf>=1?'y':'r','Jeet ÷ haar. 1.5+ achha, 1 se neeche nuksan')}${K2('Expectancy',fm(s.avg),cl(s.avg),'Har trade ka average')}${K2('Avg win / avg loss',fm(s.aw)+' / '+fm(s.al),'',pay?`Payoff ${pay.toFixed(2)} : 1`:'')}${K2('Max drawdown',fm(-s.dd),'r','Peak se sabse badi girawat')}${K2('Rule discipline',rp==null?'–':rp.toFixed(0)+'%',rp==null?'':rp>=80?'g':rp>=60?'y':'r',rl.length?rl.length+' trades me se':'Rule tick abhi nahi bhara')}${K2('Avg R',s.ar==null?'–':s.ar.toFixed(2),s.ar>0?'g':s.ar<0?'r':'','Risk fill karne par')}${K2('Streak abhi',cs+' '+ct,ct=='win'?'g':ct=='loss'?'r':'','Max win '+s.ms+' · max loss '+s.ml)}</div>
+<div class="card"><h3>Last ${last.length} trades</h3>${last.map(t=>`<span class="dot ${t.pnl>0?'g':t.pnl<0?'r':'m'}" title="${t.date} ${esc(t.pair)} ${fm(t.pnl)}"></span>`).join('')}</div>
+<div class="card"><h3>Equity curve</h3><canvas id="eq"></canvas></div><div class="card"><h3>Calendar (daily P&amp;L)</h3>${calH(a)}</div>`}
+// ---- Coach
+function insights(a,s){const o=[],T=s.pnl,add=(t,i,h,b,imp)=>o.push({t,i,h,b,imp:imp||0});
+if(a.length<8)return[{t:'tip',i:'ℹ️',h:'Abhi data kam hai',b:`Is range me sirf ${a.length} trades hain. 20-30+ trades ke baad insights bharosemand hote hain.`}];
+const L=[],P=[];DEC.forEach(k=>GN(a,k).forEach(r=>{if(r.n<5||(k=='mistake'&&r.k=='No mistake'))return;if(r.pnl<0)L.push({k,r});else if(r.pf>=1.5)P.push({k,r})}));
+L.sort((x,y)=>x.r.pnl-y.r.pnl).slice(0,5).forEach(({k,r})=>add('bad','🔴',`${DL[k]}: ${r.k}`,`${r.n} trades · win ${r.wr.toFixed(0)}% · kul <b class="r">${fm(r.pnl)}</b>. ${k=='mistake'?'Ye galti na hoti':'Ye na hota'} to P&L ${fm(T)} ki jagah ≈ <b class="g">${fm(T-r.pnl)}</b> hota.`,-r.pnl));
+P.sort((x,y)=>y.r.pnl-x.r.pnl).slice(0,3).forEach(({k,r})=>add('good','🟢',`${DL[k]}: ${r.k}`,`${r.n} trades · win ${r.wr.toFixed(0)}% · kul <b class="g">${fm(r.pnl)}</b> · PF ${r.pf.toFixed(2)}. Yahan teri edge dikh rahi hai, ispe focus badha.`,r.pnl/10));
+const ry=a.filter(t=>t.rule=='Yes'),rn=a.filter(t=>t.rule=='No');if(ry.length>=3&&rn.length>=3){const y=stats(ry),n=stats(rn);add(n.pnl<0?'bad':'tip','📏','Rule followed vs broken',`Rule follow: ${y.n} trades, avg ${fm(y.avg)}, kul ${fm(y.pnl)}. Rule todke: ${n.n} trades, avg ${fm(n.avg)}, kul <b class="${cl(n.pnl)}">${fm(n.pnl)}</b>.${n.avg<y.avg?' Rule todna mehnga pad raha hai.':''}`,Math.abs(n.pnl))}
+const pay=s.al?s.aw/Math.abs(s.al):0,be=pay?100/(1+pay):0;if(be&&s.wr<be)add('tip','⚖️','Win rate breakeven se neeche',`Tere avg win/loss (${pay.toFixed(2)} : 1) ke hisaab se ${be.toFixed(0)}% win rate chahiye, tera ${s.wr.toFixed(0)}% hai. Ya RR/trail se avg win badha, ya sirf best setups le.`,200);
+const wi=a.filter(t=>t.whatif!=null);if(wi.length>=5){const d=wi.reduce((x,t)=>x+t.whatif-t.pnl,0);if(d>0)add('bad','🎯','Exit me paisa chhoda',`${wi.length} trades me Best alternative follow karta to ≈ <b class="g">${fm(d)}</b> zyada hota.`,d)}
+const mx=a.filter(t=>t.maxr!=null&&t.maxr>=1.5&&t.pnl<=0);if(mx.length>=3)add('tip','🪂','Profit me jaake wapas aaye',`${mx.length} trades 1.5R+ tak gaye par loss/breakeven pe band hue (kul ${fm(mx.reduce((x,t)=>x+t.pnl,0))}). Partial book ya SL trail ka rule soch.`,mx.length*5);
+const so=sortT(a),af=[];let c=0;so.forEach(t=>{if(c>=2)af.push(t);c=t.pnl<0?c+1:0});if(af.length>=5){const z=stats(af);if(z.pnl<0)add('bad','🌧️','2+ loss ke baad ke trades',`${z.n} trades, win ${z.wr.toFixed(0)}%, kul <b class="r">${fm(z.pnl)}</b>. 2 loss ke baad break ya stop ka rule bana.`,-z.pnl)}
+const dm={};a.forEach(t=>(dm[t.date]=dm[t.date]||[]).push(t));const ot=Object.values(dm).filter(d=>d.length>=4).flat();if(ot.length>=5){const z=stats(ot);if(z.pnl<0)add('bad','⏱️','Din ke 4+ trade (overtrading)',`Aise dino ke ${z.n} trades, win ${z.wr.toFixed(0)}%, kul <b class="r">${fm(z.pnl)}</b>. Din ka trade limit rakh.`,-z.pnl)}
+const nm=a.filter(t=>!(t.mistake||[]).length).length;if(nm>a.length*.3)add('tip','🧩','Mistake tags kam bhare hain',`${nm} trades me mistake tag nahi hai, isliye galti wali analysis adhuri hai. Mistakes tab me "Fix incomplete trades" chala.`,1);
+const R=x=>x.t=='bad'?0:x.t=='tip'?1:2;return o.sort((x,y)=>R(x)-R(y)||y.imp-x.imp).slice(0,11)}
+function simCands(a){const C=[];[...DEC,'rule'].forEach(k=>GN(a,k).forEach(r=>{if(r.n>=3&&r.pnl<0&&!(k=='mistake'&&r.k=='No mistake')&&!(k=='rule'&&r.k=='Yes'))C.push({id:k+'|'+r.k,k,r})}));return C.sort((x,y)=>x.r.pnl-y.r.pnl).slice(0,12)}
+function vCoach(a,s){simC=simCands(a);simSel=new Set([...simSel].filter(id=>simC.some(c=>c.id==id)));
+return `<div class="card"><h3>Coach: teri trading se kya samajh aaya</h3><p class="m" style="margin-top:0">Ye sab tere hi data se nikla hai. 5 se kam trades wale groups ginti me nahi liye. Ek trade kai tags me aa sakta hai, isliye alag alag $ ko jod mat.</p>${insights(a,s).map(x=>`<div class="ins ${x.t}"><div class="it">${x.i} ${x.h}</div><div class="ib">${x.b}</div></div>`).join('')}</div>
+<div class="card"><h3>🧪 Agar aisa hota to? (simulator)</h3><p class="m" style="margin-top:0">Jo galti ya setup hataana chahta hai use tick kar. Dekh P&L kitna badalta hai.</p>${simC.length?simC.map(c=>`<label class="ck"><input type="checkbox" data-sim="${esc(c.id)}" ${simSel.has(c.id)?'checked':''}><span>${DL[c.k]}: <b>${esc(c.r.k)}</b> <span class="m">(${c.r.n} trades, <span class="r">${fm(c.r.pnl)}</span>)</span></span></label>`).join(''):'<p class="m">Abhi koi clear leak nahi mila.</p>'}<div id="simr"></div></div>`}
+function simBind(a){document.querySelectorAll('[data-sim]').forEach(c=>c.onchange=()=>{c.checked?simSel.add(c.dataset.sim):simSel.delete(c.dataset.sim);simRes(a)});simRes(a)}
+function simRes(a){const sel=[...simSel],keep=a.filter(t=>!sel.some(id=>{const i=id.indexOf('|'),k=id.slice(0,i),v=id.slice(i+1);return(DIMS[k][1](t)||[]).includes(v)})),x=stats(a),y=stats(keep),el=$('#simr');if(!el)return;
+el.innerHTML=sel.length?`<div class="grid" style="margin-top:10px">${K2('Actual',fm(x.pnl),cl(x.pnl),`${x.n} trades · win ${x.wr.toFixed(0)}% · PF ${x.pf.toFixed(2)}`)}${K2('Agar ye na hote',fm(y.pnl),cl(y.pnl),`${y.n} trades · win ${y.wr.toFixed(0)}% · PF ${y.pf.toFixed(2)}`)}${K2('Fark',fm(y.pnl-x.pnl),cl(y.pnl-x.pnl),`${x.n-y.n} trades kam`)}</div>`:'<p class="m">Upar se kuch tick kar.</p>'}
+// ---- Where & When
+function vWhere(a){return `<p class="m" style="margin-top:0">Bar = us group ka kul P&L (hara = profit, laal = loss). Right me: trades aur win%. Khali (blank) trades ginti me nahi.</p><div class="tiles">${['account','pair','session','strat','tf','dir','wd','hr','htfa','style'].map(k=>tile(a,k)).join('')}</div>`}
+// ---- Mistakes
+function vMist(a,s){const ms=GN(a,'mistake').filter(r=>r.k!='No mistake'),R=GN(a,'rule'),y=R.find(r=>r.k=='Yes'),n=R.find(r=>r.k=='No'),so=sortT(a);
+const al=[0,1,2,3].map(k=>{const r=[];let c=0;so.forEach(t=>{if(k==3?c>=3:c==k)r.push(t);c=t.pnl<0?c+1:0});return{k:k?'After '+k+' loss'+(k>1?'es':'')+(k==3?'+':''):'After win / start',...stats(r)}}).filter(x=>x.n);
+const dm={};a.forEach(t=>(dm[t.date]=dm[t.date]||[]).push(t));const nb=[1,2,3,4].map(k=>({k:k<4?k+' trade'+(k>1?'s':'')+'/day':'4+ /day',...stats(Object.values(dm).filter(d=>k<4?d.length==k:d.length>=4).flat())})).filter(x=>x.n);
+const cnt={Direction:0,Session:0,Mistake:0,'Quick view':0,Rule:0};S.trades.forEach(t=>MISS(t).forEach(m=>cnt[m]++));const inc=S.trades.filter(t=>MISS(t).length).length;
+return `<div class="card"><h3>Kaunsi galti kitna paisa khaa rahi hai</h3>${ms.length?bars(ms):'<p class="m">Mistake tags abhi nahi bhare. Neeche "Fix incomplete trades" se bhar.</p>'}<p class="m" style="font-size:12px;margin-bottom:0">Bar = us galti wale trades ka kul P&L. Ek trade me kai galtiyan ho sakti hain.</p></div>
+<div class="card"><h3>Rule followed vs broken</h3><div class="grid">${K2('Rule follow ✔',y?fm(y.pnl):'–',y?cl(y.pnl):'',y?`${y.n} trades · avg ${fm(y.avg)} · win ${y.wr.toFixed(0)}%`:'data nahi')}${K2('Rule toda ✘',n?fm(n.pnl):'–',n?cl(n.pnl):'',n?`${n.n} trades · avg ${fm(n.avg)} · win ${n.wr.toFixed(0)}%`:'data nahi')}</div></div>
+<div class="card"><h3>Loss ke baad agla trade kaisa</h3><div class="sc">${tbl(al)}</div></div><div class="card"><h3>Ek din me kitne trade</h3><div class="sc">${tbl(nb)}</div></div>
+<div class="card"><h3>🧩 Data kitna complete hai</h3><p>${inc?`${inc} trades me kuch bharna baaki hai (Direction ${cnt.Direction} · Session ${cnt.Session} · Mistake ${cnt.Mistake} · Quick view ${cnt['Quick view']} · Rule ${cnt.Rule}).`:'Sab trades complete hain ✔'}</p>${inc?'<button class="btn" id="fx">▶ Fix incomplete trades (ek ek karke)</button>':''}</div>`}
+// ---- Exits
+function vExit(a,s){const d=GN(a,'did'),wi=a.filter(t=>t.whatif!=null),wis=wi.reduce((x,t)=>x+t.whatif,0),wia=wi.reduce((x,t)=>x+t.pnl,0),ba={};wi.forEach(t=>{const k=t.bestalt||'(blank)';(ba[k]=ba[k]||{n:0,x:0}).n++;ba[k].x+=t.whatif-t.pnl});
+const O=['<1R','1-2R','2-3R','3R+'],mr=GN(a,'maxr').sort((x,y)=>O.indexOf(x.k)-O.indexOf(y.k));
+return `<div class="card"><h3>Main trade kaise band karta hu</h3>${d.length?bars(d):'<p class="m">What I did abhi nahi bhara</p>'}<div class="sc">${tbl(d)}</div></div>
+<div class="card"><h3>Jo kiya vs What-if</h3>${wi.length?`<p>${wi.length} trades: actual <b class="${cl(wia)}">${fm(wia)}</b> · what-if <b class="${cl(wis)}">${fm(wis)}</b> · fark <b class="${cl(wis-wia)}">${fm(wis-wia)}</b></p><table><tr><th>Best alternative</th><th>Trades</th><th>Extra $ agar follow karta</th></tr>${Object.entries(ba).sort((x,y)=>y[1].x-x[1].x).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.n}</td><td class="${cl(v.x)}">${fm(v.x)}</td></tr>`).join('')}</table>`:'<p class="m">What-if result bharoge to yahan dikhega ki trail/early exit ne kitna bachaya ya gawaya.</p>'}</div>
+<div class="card"><h3>Price kitna gaya (Max R)</h3>${mr.length?bars(mr):'<p class="m">Max R bharoge to yahan dikhega.</p>'}</div><div class="card"><h3>Quick view</h3><div class="sc">${tbl(GN(a,'quick'))}</div></div>`}
+// ---- Deep dive
+function vDeep(a){return `<div class="card"><div class="row"><h3 style="flex:2">Kisi bhi cheez se breakdown</h3><select id="dim">${Object.entries(DIMS).map(([k,v])=>`<option value="${k}" ${dim==k?'selected':''}>${v[0]}</option>`).join('')}</select></div>${tbl(G(a,dim))}</div>`}
 // ---------- data / backup
 function csv(){const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';return F.join(',')+'\n'+S.trades.map(t=>F.map(k=>q(ARR.includes(k)?(t[k]||[]).join('|'):t[k])).join(',')).join('\n')}
 function parseCsv(s){const r=[];let row=[],f='',q=false;for(let i=0;i<s.length;i++){const c=s[i];if(q){if(c=='"'){if(s[i+1]=='"'){f+='"';i++}else q=false}else f+=c}else if(c=='"')q=true;else if(c==','){row.push(f);f=''}else if(c=='\n'||c=='\r'){if(c=='\r'&&s[i+1]=='\n')i++;row.push(f);f='';if(row.length>1||row[0])r.push(row);row=[]}else f+=c}if(f||row.length){row.push(f);r.push(row)}return r}
